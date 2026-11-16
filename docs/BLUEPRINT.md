@@ -5,6 +5,7 @@
 > Companion doc: [CHECKLIST.md](CHECKLIST.md)
 >
 > **Changelog**
+> - v1.1 — Source code is hosted in a **public** GitHub repository (your decision). The *deployment* stays private; added the public-repo rules in §11.8.
 > - v1.0 — Approved. Decisions recorded in §14: Anthropic Claude, lean EC2 in us-east-1, minimum-cost budget profile (§11.7). Q8 (private access) still open — needed by Phase 4.
 > - v0.3 — **Target changed to a private, invite-only deployment for our own use.** The public demo is now an optional, deferred phase (Phase D, §11.6), to be decided later. Added how the design fits Pinecone's free Starter plan (§11.4) and a short "keep the product path open" note (§1.6).
 > - v0.2 — Database changed to **MySQL 8.4 (LTS)** and vector store to **Pinecone (serverless)**, replacing PostgreSQL and Qdrant from the original brief. Tenant isolation, schema types, hybrid-search and deployment sections reworked accordingly (see D1–D3, §4, §6, §8, §11).
@@ -647,7 +648,7 @@ Checked against Pinecone's published limits on 2026-11-16 (re-check before Phase
 
 Quota errors (`403 QUOTA_EXCEEDED`) are caught and shown as a clear "search unavailable" message, raise an alert, and never fail silently. **Upgrade triggers:** hitting quotas, needing separate keys per environment, needing hosted reranking at volume or another region, or opening Phase D.
 
-### 11.5 CI/CD (GitHub Actions, private repo)
+### 11.5 CI/CD (GitHub Actions, public repo — see §11.8)
 - `ci.yml` (PR): Ruff, mypy, pytest (unit + integration with service containers), ESLint, tsc, Vitest, Playwright smoke, security scans, eval-smoke (path-filtered).
 - `build.yml` (main): build & scan images → push to ECR with git SHA tag.
 - `deploy.yml` (manual approval / tag): Terraform plan/apply (OIDC to AWS, no long-lived keys) → MySQL backup → Alembic migrations → rolling restart → smoke test `/readyz` → auto-rollback to previous tag on failure.
@@ -669,11 +670,23 @@ Not part of the MVP or the advanced phases. If we decide to open a demo, this ph
 |-------|---------|
 | Compute | Smallest ARM instance that passes the Phase 2/5 benchmarks (start with 4 GB RAM; try 2 GB if the local reranker is replaced by a hosted one). **Auto-stop outside working hours** via a scheduled Lambda/EventBridge rule — we're the only users |
 | Avoid | NAT gateways, ALB, RDS, ElastiCache, CloudFront/WAF, multi-AZ — none needed for a private, single-host deployment |
-| Free tiers | Pinecone Starter, Langfuse Cloud free, Grafana Cloud free, GitHub Actions minutes on the private repo |
+| Free tiers | Pinecone Starter, Langfuse Cloud free, Grafana Cloud free, GitHub Actions on the public repo (standard runners are free for public repos) |
 | LLM | Haiku-tier by default for every route; Sonnet-tier only where evals justify it; prompt caching for the system prompt; small context windows (top 6 chunks); output token caps |
 | Embeddings / rerank | Local (fastembed, small cross-encoder) — no per-token cost |
 | Evals | Full Ragas runs manual only; CI eval-smoke ≤10 cases with a hard $ cap |
 | Guards | AWS Budgets alarm at 50% / 80% / 100% of the chosen ceiling; app daily LLM spend cap + kill switch |
+
+### 11.8 Public source repository rules
+The code is public; the running system and its data are not. Because anyone can read the repo:
+| Rule | How it's enforced |
+|------|-------------------|
+| No secrets in git, ever | Secrets only in `.env` (git-ignored) and SSM; `.env.example` files hold placeholders only; **gitleaks** in pre-commit and CI; GitHub secret scanning + push protection enabled on the repo |
+| No real data in git | Only the synthetic sample corpus and eval datasets built from it; real documents live in S3/MySQL of the private deployment |
+| No infrastructure identifiers | AWS account IDs, IPs, domain, Tailscale names, Pinecone index host and Terraform state stay out of git (`*.tfvars` and state are git-ignored; remote state in a private S3 bucket) |
+| Security through design, not obscurity | Assume attackers read the code: authz, tenant isolation and injection defences must hold with the source known |
+| CI on untrusted forks | Workflows triggered by pull requests from forks get no secrets (`pull_request`, never `pull_request_target` with checkout); deploy workflows only run on `main` / tags with manual approval |
+| Personal data in commits | Commits use the GitHub-provided `noreply` email unless the owner chooses otherwise |
+| Licence | All rights reserved (public to read, not open source) until a licence is chosen deliberately |
 
 ---
 
@@ -698,7 +711,7 @@ Not part of the MVP or the advanced phases. If we decide to open a demo, this ph
 
 ## 13. Dependencies
 
-**Accounts / external services (you provide):** LLM provider API key(s); Pinecone account (Starter plan: one project shared by staging + prod); AWS account (budget alarm set first!); domain name + DNS; private GitHub repo; Langfuse (cloud project or self-host); private-access option (Tailscale or an identity-aware proxy) or our fixed IPs; optional: OAuth apps (Google/GitHub), Sentry, Grafana Cloud; captcha provider only if Phase D.
+**Accounts / external services (you provide):** LLM provider API key(s); Pinecone account (Starter plan: one project shared by staging + prod); AWS account (budget alarm set first!); domain name + DNS; GitHub repo (public); Langfuse (cloud project or self-host); private-access option (Tailscale or an identity-aware proxy) or our fixed IPs; optional: OAuth apps (Google/GitHub), Sentry, Grafana Cloud; captcha provider only if Phase D.
 
 **Backend libraries:** FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2.0 (async) + asyncmy, Alembic, LangGraph (+ langchain-core only where needed), pinecone (official Python SDK), fastembed (and/or sentence-transformers for reranker), Celery, redis-py, Authlib, argon2-cffi, PyJWT, pypdf/pdfplumber, python-docx, tiktoken-style tokenizer, Presidio (PII), Ragas, langfuse SDK, opentelemetry-*, structlog, httpx, tenacity, slowapi or custom Redis limiter, pytest, testcontainers, hypothesis (selected), Ruff, mypy.
 

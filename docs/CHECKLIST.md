@@ -22,7 +22,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 **Goal:** empty-but-real skeleton that builds, tests and runs locally.
 - [x] Initialise git repo, monorepo layout (§2.5), `.gitignore`, `.gitattributes`, `.editorconfig`, licence: private/all rights reserved *(GitHub remote not yet created)*
 - [x] Backend: uv project, FastAPI app factory, settings (pydantic-settings), structlog, Problem Details error handler, `/healthz` `/readyz` `/version` — 21 tests, Ruff + mypy strict clean
-- [ ] Frontend: Next.js + TS + Tailwind + shadcn/ui, app shell layout, theme, API client stub
+- [x] Frontend: Next.js 16 + TS + Tailwind + shadcn/ui, app shell layout, theme, typed API client (OpenAPI-generated) + live status card — 7 Vitest tests, ESLint + tsc clean, verified in browser
 - [ ] Docker Compose: mysql 8.4, redis, pinecone-local (emulator), minio, api, worker, web
 - [ ] Verify Pinecone Local parity (namespaces, metadata filters, list-by-prefix, delete) and re-check Pinecone Starter limits (§11.4)
 - [ ] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` type helpers
