@@ -5,6 +5,7 @@
 > Companion doc: [CHECKLIST.md](CHECKLIST.md)
 >
 > **Changelog**
+> - v1.2 — Local S3 stand-in changed from MinIO to **SeaweedFS**: MinIO's container images are no longer published. Production still uses AWS S3. Dockerfiles live beside each app (`apps/*/Dockerfile`) with `compose.yaml` at the repo root.
 > - v1.1 — Source code is hosted in a **public** GitHub repository (your decision). The *deployment* stays private; added the public-repo rules in §11.8.
 > - v1.0 — Approved. Decisions recorded in §14: Anthropic Claude, lean EC2 in us-east-1, minimum-cost budget profile (§11.7). Q8 (private access) still open — needed by Phase 4.
 > - v0.3 — **Target changed to a private, invite-only deployment for our own use.** The public demo is now an optional, deferred phase (Phase D, §11.6), to be decided later. Added how the design fits Pinecone's free Starter plan (§11.4) and a short "keep the product path open" note (§1.6).
@@ -107,7 +108,7 @@ flowchart LR
   subgraph Data
     PG[(MySQL 8.4<br/>InnoDB, tenant-scoped ORM)]
     RD[(Redis<br/>broker, cache, rate limits)]
-    S3[(Object storage<br/>S3 / MinIO locally)]
+    S3[(Object storage<br/>S3 / SeaweedFS locally)]
   end
   subgraph External
     QD[(Pinecone serverless<br/>namespace per tenant)]
@@ -178,7 +179,7 @@ office-mates/
 │       └── alembic/
 ├── evals/                      # golden datasets (versioned), red-team suites
 ├── infra/
-│   ├── docker/                 # Dockerfiles, compose files
+│   ├── docker/                 # deployment compose files (Phase 4)
 │   └── terraform/              # modules: network, compute, data, dns, iam
 ├── docs/                       # this blueprint, ADRs, runbooks
 └── .github/workflows/          # CI, security scans, deploy
@@ -607,7 +608,7 @@ Tool execution pipeline: `LLM proposal → Pydantic arg validation → permissio
 ## 11. Deployment
 
 ### 11.1 Environments
-`local` (Docker Compose, MinIO for S3, Pinecone Local) → `staging` (optional, same Terraform, smaller) → `prod` (private, invite-only).
+`local` (Docker Compose, SeaweedFS for S3, Pinecone Local) → `staging` (optional, same Terraform, smaller) → `prod` (private, invite-only).
 
 ### 11.2 AWS topology — two profiles (Terraform variable)
 Region: **AWS us-east-1**, because Pinecone's free Starter plan only offers indexes there; keeping both together avoids cross-region latency and data-transfer cost.

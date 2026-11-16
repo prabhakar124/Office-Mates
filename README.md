@@ -8,6 +8,8 @@ Enterprise AI knowledge and workflow assistant: grounded, permission-aware answe
 - Backend skeleton (FastAPI): app factory, typed settings, structured JSON logging, RFC 9457 error responses, request IDs, security headers, `/healthz`, `/readyz`, `/version`.
 - Frontend shell (Next.js 16, TypeScript, Tailwind, shadcn/ui): sidebar layout, light/dark theme, typed API client generated from the backend's OpenAPI schema, live system-status card. Sidebar features are shown disabled with the phase they arrive in.
 
+- Local stack with Docker Compose: MySQL 8.4, Redis, Pinecone Local, SeaweedFS (S3 stand-in), API, Celery worker and web app. The worker has one connectivity task; MySQL, Pinecone and S3 are running but not used by the app yet.
+
 ## Not yet implemented
 Everything else in the blueprint: auth, Knowledge Hub, ingestion, assistant, RAG, agents, tools, security center, evaluation, observability, deployment.
 
@@ -19,6 +21,25 @@ infra/         Docker and Terraform
 evals/         Versioned evaluation datasets
 docs/          Blueprint, checklist, ADRs
 ```
+
+## Run everything with Docker
+Requirements: Docker Desktop running.
+
+```bash
+cp .env.example .env        # then replace each CHANGE_ME with a password of your own
+docker compose up --build -d --wait
+```
+
+| Service | URL on your machine |
+|---------|---------------------|
+| Web app | http://localhost:3000 |
+| API | http://localhost:8000/readyz (docs at /docs) |
+| MySQL | localhost:3310 (database `officemates`) |
+| Redis | localhost:6379 |
+| S3 (SeaweedFS) | http://localhost:8333 |
+| Pinecone Local | http://localhost:5080 |
+
+All ports are bound to 127.0.0.1 only. Stop with `docker compose down` (add `-v` to also delete the data).
 
 ## Local development (backend)
 Requirements: Python 3.13, [uv](https://docs.astral.sh/uv/).

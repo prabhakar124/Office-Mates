@@ -3,7 +3,7 @@
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     log_json: bool = True
 
     cors_origins: list[str] = Field(default_factory=list)
+
+    # Redis: Celery broker (db 0), Celery results (db 1); later rate limits and caches.
+    # Unset means "no Redis": the API still runs, without the Redis readiness check.
+    redis_url: SecretStr | None = None
 
     # OpenAPI docs UI is only exposed where we explicitly allow it (never in prod by default).
     docs_enabled: bool | None = None

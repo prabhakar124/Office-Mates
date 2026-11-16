@@ -14,6 +14,7 @@ from officemates.core.errors import register_error_handlers
 from officemates.core.health import ReadinessRegistry
 from officemates.core.logging import configure_logging
 from officemates.core.middleware import RequestContextMiddleware, SecurityHeadersMiddleware
+from officemates.core.redis import redis_readiness_check
 
 API_PREFIX = "/api/v1"
 
@@ -31,6 +32,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.readiness = ReadinessRegistry()
+    if settings.redis_url is not None:
+        app.state.readiness.register(
+            "redis", redis_readiness_check(settings.redis_url.get_secret_value())
+        )
 
     register_error_handlers(app)
 

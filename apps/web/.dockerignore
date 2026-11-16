@@ -1,0 +1,10 @@
+# Keep the build context small and secrets out of images.
+node_modules
+.next
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+Dockerfile
+.dockerignore

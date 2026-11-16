@@ -1,0 +1,127 @@
+# Local development stack. Start with:  docker compose up --build
+#
+# - Every published port is bound to 127.0.0.1, so nothing is reachable from the network.
+# - Passwords come from the git-ignored .env file (copy .env.example to .env first).
+# - This file is for local development only; deployment is defined in infra/ (Phase 4).
+
+name: officemates
+
+services:
+  # ---------------------------------------------------------------- data ----
+  mysql:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --innodb-buffer-pool-size=256M # keep memory modest on a laptop
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env (see .env.example)}
+      MYSQL_DATABASE: officemates
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3310}:3306" # not 3306: avoids clashing with a MySQL already on the machine
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Pinecone Local: in-memory emulator of the Pinecone API for development and tests.
+  # Data is lost on restart by design. Used by the app from Phase 2.
+  pinecone:
+    image: ghcr.io/pinecone-io/pinecone-local:latest
+    environment:
+      PORT: 5080
+      PINECONE_HOST: pinecone # host name other containers use to reach created indexes
+    ports:
+      - "127.0.0.1:5080-5090:5080-5090"
+    restart: unless-stopped
+
+  # SeaweedFS: S3-compatible object storage standing in for AWS S3 locally (Phase 2 uploads).
+  # "mini" runs every SeaweedFS component in one container and creates the bucket on startup.
+  s3:
+    image: chrislusf/seaweedfs:4.54
+    command: ["mini", "-dir=/data", "-s3.port.iceberg=0", "-s3.port.lance=0"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID in .env (see .env.example)}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY in .env (see .env.example)}
+      S3_BUCKET: ${S3_BUCKET:-officemates-local}
+    ports:
+      - "127.0.0.1:8333:8333" # S3 API only; admin UIs stay inside the Docker network
+    volumes:
+      - s3-data:/data
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------- app ----
+  api:
+    build:
+      context: apps/backend
+    image: officemates-backend:local
+    environment: &backend-env
+      OM_ENVIRONMENT: local
+      OM_LOG_LEVEL: INFO
+      OM_LOG_JSON: "true"
+      OM_REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: officemates-backend:local # same image as the API, built once
+    command: ["celery", "-A", "officemates.workers.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    environment: *backend-env
+    depends_on:
+      api: # ensures the shared image is built before the worker starts
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A officemates.workers.celery_app inspect ping -d celery@$$HOSTNAME --timeout 5 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: apps/web
+      args:
+        API_INTERNAL_URL: http://api:8000
+    image: officemates-web:local
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
+  s3-data:

@@ -23,7 +23,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 - [x] Initialise git repo, monorepo layout (§2.5), `.gitignore`, `.gitattributes`, `.editorconfig`, licence: private/all rights reserved *(GitHub remote not yet created)*
 - [x] Backend: uv project, FastAPI app factory, settings (pydantic-settings), structlog, Problem Details error handler, `/healthz` `/readyz` `/version` — 21 tests, Ruff + mypy strict clean
 - [x] Frontend: Next.js 16 + TS + Tailwind + shadcn/ui, app shell layout, theme, typed API client (OpenAPI-generated) + live status card — 7 Vitest tests, ESLint + tsc clean, verified in browser
-- [ ] Docker Compose: mysql 8.4, redis, pinecone-local (emulator), minio, api, worker, web
+- [x] Docker Compose: mysql 8.4, redis, pinecone-local (emulator), SeaweedFS (S3 stand-in; MinIO images no longer exist), api, worker (minimal Celery app + `system.ping`), web — all verified running; Redis readiness check in `/readyz`
 - [ ] Verify Pinecone Local parity (namespaces, metadata filters, list-by-prefix, delete) and re-check Pinecone Starter limits (§11.4)
 - [ ] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` type helpers
 - [ ] Pre-commit: Ruff, mypy, ESLint, Prettier, gitleaks 🔒
@@ -47,7 +47,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 
 ## Phase 2 — Knowledge Hub & ingestion [MVP]
 - [ ] Models: documents, document_versions, chunks, ingestion_jobs
-- [ ] Upload endpoint: allowlist + magic bytes + size/page limits 🔒, S3/MinIO storage, sha256 dedupe
+- [ ] Upload endpoint: allowlist + magic bytes + size/page limits 🔒, S3/SeaweedFS storage, sha256 dedupe
 - [ ] Celery app, `ingest` queue, retries/backoff, idempotency, job status
 - [ ] Parsers: PDF, DOCX, MD, TXT → normalised blocks; invisible-text stripping 🔒
 - [ ] Structure-aware chunker with page/section metadata (unit-tested on fixtures)
