@@ -14,6 +14,9 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
       - --innodb-buffer-pool-size=256M # keep memory modest on a laptop
+      # Lets the migrator account create triggers (append-only audit log) while binary
+      # logging is on. Safe here: our triggers only reject changes, they are deterministic.
+      - --log-bin-trust-function-creators=ON
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env (see .env.example)}
       MYSQL_DATABASE: officemates

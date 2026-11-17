@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from alembic import command
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import Column, MetaData, String, Table, insert, select, text
@@ -139,7 +140,7 @@ def test_migrations_upgrade_and_downgrade(db_urls: DbUrls) -> None:
     try:
         command.upgrade(config, "head")
         version = asyncio.run(_scalar(db_urls.migrator, "SELECT version_num FROM alembic_version"))
-        assert version == "0001"
+        assert version == ScriptDirectory.from_config(config).get_current_head()
 
         command.downgrade(config, "base")
         version = asyncio.run(_scalar(db_urls.migrator, "SELECT version_num FROM alembic_version"))

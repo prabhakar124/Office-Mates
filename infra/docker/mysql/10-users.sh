@@ -43,6 +43,10 @@ GRANT ALL PRIVILEGES ON officemates_test.* TO 'migrator'@'%';
 
 GRANT SELECT ON officemates.* TO 'readonly_ops'@'%';
 
+-- Allow the migrator to create triggers while binary logging is on (append-only audit
+-- log). Compose also sets this on the command line; CI relies on this line.
+SET PERSIST log_bin_trust_function_creators = ON;
+
 FLUSH PRIVILEGES;
 SQL
 

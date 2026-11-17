@@ -55,6 +55,21 @@ layers:
 - ❌ Noisy-neighbour risk: one tenant's heavy load affects others. Acceptable for our use; per-tenant
   rate limits and budgets come in Phase 3.
 
+## As built (Phase 1, slice 1 — 2026-11-17)
+- `officemates/core/tenancy.py` holds the context (`tenant_scope`, `system_scope`);
+  `officemates/db/tenancy.py` holds the mixin and the session hooks.
+- Detection walks the whole statement, not just the selected entities: the first test run
+  showed `select(User).join(Membership)` slipped through when only `all_mappers` was checked.
+- The tenant filter can only attach to ORM entities, so a tenant table used as a bare Core
+  `Table`/`Column` (outside a system scope) raises `UnscopedTableAccessError` instead of
+  running unfiltered. Raw `text()` SQL is still not inspected — the planned lint rule will
+  cover that.
+- A bulk `UPDATE … SET tenant_id = …` is refused in every scope (the flush guard cannot see
+  bulk statements).
+- `audit_logs` is append-only through `BEFORE UPDATE/DELETE` triggers. Creating triggers as
+  the `migrator` with binary logging on needs `log_bin_trust_function_creators = ON` (Compose
+  flag, and `SET PERSIST` in the MySQL init script). Purges will need a migrator-account job.
+
 ## How we check it
 Phase 1 exit criterion: two tenants cannot read, update or delete each other's rows through any
 repository or ORM path, and un-scoped queries fail closed. Concretely, CI runs:

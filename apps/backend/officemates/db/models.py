@@ -1,8 +1,7 @@
-"""Import every model module here so ``Base.metadata`` is complete for Alembic.
+"""Import every model module here so ``Base.metadata`` is complete for Alembic and tests."""
 
-No models exist yet; identity and tenancy tables arrive in Phase 1.
-"""
-
+from officemates.audit import models as audit_models
 from officemates.db.base import Base
+from officemates.identity import models as identity_models
 
-__all__ = ["Base"]
+__all__ = ["Base", "audit_models", "identity_models"]

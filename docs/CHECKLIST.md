@@ -35,9 +35,9 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
   - **Not done / known gaps:** no product features; Pinecone and S3 are not used by the app yet and have no `/readyz` check; the web shell's sidebar features are disabled placeholders; the worker has only a ping task.
 
 ## Phase 1 — Identity, tenancy, RBAC [MVP] 🔒
-- [ ] Models: tenants, users, memberships, refresh_tokens, audit_logs
-- [ ] `TenantContext` + `TenantScopedMixin` + fail-closed ORM hooks (`do_orm_execute` criteria, `before_insert` stamping, raise without context) + audited `system_scope()` 🔒
-- [ ] Composite FKs `(tenant_id, id)` on child tables; raw-SQL lint rule outside repositories 🔒
+- [ ] Models: tenants, users, memberships, refresh_tokens, audit_logs — *tenants, users, memberships, audit_logs done (migration 0002, audit log append-only via triggers); refresh_tokens and invitations come with login*
+- [x] `TenantContext` + `TenantScopedMixin` + fail-closed ORM hooks (`do_orm_execute` criteria, `before_insert` stamping, raise without context) + audited `system_scope()` 🔒 — also catches tenant tables that are only joined/subqueried, refuses bare Core tables and bulk `tenant_id` updates; *system scope is logged, not yet written to audit_logs*
+- [ ] Composite FKs `(tenant_id, id)` on child tables; raw-SQL lint rule outside repositories 🔒 — *`tenant_foreign_key()` + a test that every tenant→tenant FK is composite (no such child tables yet); Core-table access is refused at runtime; `text()` lint rule still to do*
 - [ ] Register (dev only), login, refresh rotation with reuse detection, logout; Argon2id
 - [ ] Cookie-based JWT, CSRF protection, strict CORS, security headers (CSP, HSTS)
 - [ ] `require_permission()` dependency + role→permission map

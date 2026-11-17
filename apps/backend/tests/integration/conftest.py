@@ -10,6 +10,7 @@ reachable the tests are skipped locally, but fail in CI so a broken setup is nev
 
 import asyncio
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,3 +83,19 @@ def db_urls() -> DbUrls:
     if f"/{TEST_DATABASE}" not in urls.app or f"/{TEST_DATABASE}" not in urls.migrator:
         pytest.fail(f"integration tests must only run against the {TEST_DATABASE} database")
     return urls
+
+
+@pytest.fixture(scope="module")
+def migrated_db(db_urls: DbUrls) -> Iterator[DbUrls]:
+    """``officemates_test`` at the latest migration for one test module, then emptied."""
+    from alembic import command
+
+    from officemates.db.migrate import make_config
+
+    config = make_config(db_urls.migrator)
+    command.downgrade(config, "base")  # start clean even if a previous run was interrupted
+    command.upgrade(config, "head")
+    try:
+        yield db_urls
+    finally:
+        command.downgrade(config, "base")
