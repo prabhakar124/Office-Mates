@@ -9,7 +9,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 
 ## Definition of Done (applies to every task)
 - [ ] Code typed (mypy / tsc strict where configured), linted (Ruff / ESLint)
-- [ ] Unit tests; integration tests for anything touching MySQL, Pinecone (via Pinecone Local), Redis or LLM gateway (LLM mocked in CI)
+- [ ] Unit tests; integration tests for anything touching MySQL, Pinecone (real service, throwaway namespaces), Redis or LLM gateway (LLM mocked in CI)
 - [ ] Authz + tenant-isolation tests for every new endpoint/tool 🔒
 - [ ] Errors return Problem Details; no stack traces to clients
 - [ ] Logs/traces carry `request_id`/`trace_id`, contain no secrets
@@ -20,14 +20,14 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 
 ## Phase 0 — Foundations [MVP]
 **Goal:** empty-but-real skeleton that builds, tests and runs locally.
-- [x] Initialise git repo, monorepo layout (§2.5), `.gitignore`, `.gitattributes`, `.editorconfig`, licence: private/all rights reserved *(GitHub remote not yet created)*
+- [x] Initialise git repo, monorepo layout (§2.5), `.gitignore`, `.gitattributes`, `.editorconfig`, licence: private/all rights reserved — public GitHub repo
 - [x] Backend: uv project, FastAPI app factory, settings (pydantic-settings), structlog, Problem Details error handler, `/healthz` `/readyz` `/version` — 21 tests, Ruff + mypy strict clean
 - [x] Frontend: Next.js 16 + TS + Tailwind + shadcn/ui, app shell layout, theme, typed API client (OpenAPI-generated) + live status card — 7 Vitest tests, ESLint + tsc clean, verified in browser
-- [x] Docker Compose: mysql 8.4, redis, pinecone-local (emulator), SeaweedFS (S3 stand-in; MinIO images no longer exist), api, worker (minimal Celery app + `system.ping`), web — all verified running; Redis readiness check in `/readyz`
-- [ ] Verify Pinecone Local parity (namespaces, metadata filters, list-by-prefix, delete) and re-check Pinecone Starter limits (§11.4)
+- [x] Docker Compose: mysql 8.4, redis, SeaweedFS (S3 stand-in; MinIO images no longer exist), api, worker (minimal Celery app + `system.ping`), web — all verified running; Redis readiness check in `/readyz` *(Pinecone Local removed 2026-11-17: end of life)*
+- [x] Pinecone behaviour check: Pinecone Local turned out to be end-of-life, so a contract suite now verifies namespaces, metadata filters, list-by-prefix, delete and namespace deletion against the real service (12 tests); Starter limits re-checked (§11.4)
 - [x] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` and UTC `DATETIME(6)` types; MySQL check in `/readyz`; migrations run as a one-shot Compose job — 49 tests incl. 10 against real MySQL
 - [x] Pre-commit: gitleaks, `.env` blocker, private-key/large-file/merge-conflict checks, Ruff, mypy, ESLint, Prettier, tsc 🔒 — verified to block a fake token and a `.env` file
-- [ ] GitHub Actions `ci.yml`: secret scan (full history), backend lint/types/tests with a MySQL service, web lint/types/tests/build, API-contract check, Docker stack smoke test — *written and dry-run locally; first run on GitHub pending push*
+- [x] GitHub Actions `ci.yml`: secret scan (full history), backend lint/types/tests with a MySQL service, web lint/types/tests/build, API-contract check, Docker stack smoke test — *green on GitHub from 64320cb (first run failed on a fresh-checkout typecheck bug, fixed)*; Pinecone contract tests run when the `PINECONE_API_KEY` repo secret is set
 - [x] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile) — in [adr/](adr/README.md); 002–005 are accepted designs, built in Phases 1–4
 - **Exit:** `docker compose up` → web shows shell, `/readyz` green, CI green.
 

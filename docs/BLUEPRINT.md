@@ -5,6 +5,7 @@
 > Companion doc: [CHECKLIST.md](CHECKLIST.md)
 >
 > **Changelog**
+> - v1.3 — **Pinecone Local dropped:** the emulator reached end of life on 2026-10-07 (its last image, Feb 2025, cannot even create an index with the current SDK). Development and tests use the real Pinecone service with an API key; a contract-test suite pins down the behaviours we rely on (ADR 003). Starter limits re-checked 2026-11-17 (§11.4).
 > - v1.2 — Local S3 stand-in changed from MinIO to **SeaweedFS**: MinIO's container images are no longer published. Production still uses AWS S3. Dockerfiles live beside each app (`apps/*/Dockerfile`) with `compose.yaml` at the repo root.
 > - v1.1 — Source code is hosted in a **public** GitHub repository (your decision). The *deployment* stays private; added the public-repo rules in §11.8.
 > - v1.0 — Approved. Decisions recorded in §14: Anthropic Claude, lean EC2 in us-east-1, minimum-cost budget profile (§11.7). Q8 (private access) still open — needed by Phase 4.
@@ -193,7 +194,7 @@ Each of these becomes a short ADR in `docs/adr/` when implemented.
 
 | # | Decision | Chosen | Alternatives | Why / trade-off |
 |---|----------|--------|--------------|-----------------|
-| D0 | Databases | **MySQL 8.4 LTS (InnoDB) + Pinecone serverless** (your choice, v0.2) | PostgreSQL + Qdrant (original brief) | MySQL: widely deployed, managed on RDS/Aurora, familiar. Pinecone: fully managed, no vector DB to operate or size, frees RAM on the lean host, namespaces fit multitenancy well. **Costs of this choice:** no Row-Level Security in MySQL (isolation moves to the app layer, D1), non-transactional DDL in migrations, no native arrays/sequences; Pinecone adds a usage-billed third-party dependency, sends embeddings + metadata off our infrastructure, and cannot run fully offline (emulator for dev/CI). |
+| D0 | Databases | **MySQL 8.4 LTS (InnoDB) + Pinecone serverless** (your choice, v0.2) | PostgreSQL + Qdrant (original brief) | MySQL: widely deployed, managed on RDS/Aurora, familiar. Pinecone: fully managed, no vector DB to operate or size, frees RAM on the lean host, namespaces fit multitenancy well. **Costs of this choice:** no Row-Level Security in MySQL (isolation moves to the app layer, D1), non-transactional DDL in migrations, no native arrays/sequences; Pinecone adds a usage-billed third-party dependency, sends embeddings + metadata off our infrastructure, and cannot run offline at all (no supported emulator; dev and CI use the real service). |
 | D1 | Tenancy model (MySQL) | **Shared DB, shared schema, `tenant_id` on every row, enforced by a fail-closed ORM layer**: every tenant-scoped model uses `TenantScopedMixin`; a SQLAlchemy `do_orm_execute` hook adds `with_loader_criteria(tenant_id = ctx.tenant_id)` to all SELECT/UPDATE/DELETE and a `before_insert` hook stamps `tenant_id`; a query on a tenant-scoped model with **no tenant context raises** (only an explicit, audited `system_scope()` bypasses it). Backed by **composite foreign keys `(tenant_id, id)`** so a row can never reference another tenant's row, and `tenant_id`-leading indexes. | DB-per-tenant; MySQL views + definer tricks | MySQL has no RLS, so isolation can't be a pure database guarantee. Fail-closed ORM scoping + composite FKs + a CI test that (a) fails if any table with `tenant_id` lacks the mixin and (b) proves tenant A can never read/update tenant B for every model gets close. Raw SQL is banned outside the repository layer (lint rule + review). Trade-off: weaker than RLS — a raw-SQL bug could bypass it; noisy-neighbour risk. |
 | D2 | Vector isolation (Pinecone) | **One Pinecone index, one namespace per tenant** (`t_{tenant_id}`), namespace chosen only by the retrieval layer from the authenticated tenant; document ACLs enforced with metadata filters inside the namespace | Single namespace + `tenant_id` metadata filter; index-per-tenant | Namespaces are Pinecone's recommended multitenancy pattern: queries physically can't cross namespaces, and deleting a demo sandbox = deleting its namespace. Index-per-tenant is far too costly. Trade-off: cross-tenant/global search is impossible (fine — we never want it); must verify plan limits on namespace count vs. expected demo sandboxes. |
 | D3 | Hybrid search (Pinecone) | **Decided in Phase 5 by eval:** (a) separate dense + sparse indexes, same namespaces, fused client-side with RRF, or (b) a single sparse-dense index (dotproduct metric, alpha-weighted) — then reranker. Re-check Pinecone's current docs/recommendation at that time. | Separate Elasticsearch/OpenSearch for BM25 | No extra search cluster to run. (a) allows RRF and independent tuning but doubles query/write units; (b) is one query but forces dotproduct and alpha tuning. Trade-off: lexical features are thinner than ES. |
@@ -318,7 +319,7 @@ erDiagram
 | Not stored | **Chunk text** — kept only in MySQL and fetched by `chunk_id` after retrieval. Keeps metadata well under Pinecone's per-record size limit and minimises data held by a third party. |
 | Re-embedding / model change | Build a new index version `v{n+1}` from MySQL `chunks`, run evals against it, then switch the `PINECONE_INDEX` config and delete the old index (Pinecone has no collection aliases). |
 | Tenant deletion (and Phase D sandbox purge) | Delete the tenant's namespace + MySQL rows in one Celery job; job is idempotent and audited. |
-| Local dev & CI | Pinecone Local (emulator container) for integration tests; a tiny real-Pinecone smoke test in staging/deploy only. *(Verify emulator feature parity in Phase 0.)* |
+| Local dev & CI | **Real Pinecone** (Pinecone Local reached end of life on 2026-10-07). Contract tests (`tests/integration/test_pinecone_contract.py`, marker `pinecone`) run against a small dedicated index `om-contract-test` (dense, 8-dim) using throwaway `ct_<run>_*` namespaces that are deleted afterwards; skipped when no `PINECONE_API_KEY` is set. Unit tests of retrieval code use an in-process fake whose behaviour must match the contract tests. |
 
 ### 4.4 Redis keyspace
 `rl:{scope}:{id}:{window}` rate limits · `budget:{tenant}:{day}` token budgets · `cache:emb:{hash}` query-embedding cache · `cache:ans:{tenant}:{hash}` answer cache (advanced, invalidated on doc change) · Celery queues `ingest`, `reports`, `evals`, `maintenance`.
@@ -555,7 +556,7 @@ Tool execution pipeline: `LLM proposal → Pydantic arg validation → permissio
 - Third-party data: Pinecone receives embeddings and filter metadata only — never raw chunk text, user emails or conversation content. Pinecone API key is scoped to the project and stored in SSM; separate projects/keys for dev, staging and prod.
 
 ### 8.3 Security testing
-- Unit/integration: authz matrix (role × endpoint); **tenant-scope tests** generated for every tenant-scoped model (tenant A cannot select/update/delete tenant B rows; queries without tenant context raise; a test fails if any table with `tenant_id` lacks the mixin); Pinecone leakage tests (queries for tenant A never return tenant B ids) against Pinecone Local.
+- Unit/integration: authz matrix (role × endpoint); **tenant-scope tests** generated for every tenant-scoped model (tenant A cannot select/update/delete tenant B rows; queries without tenant context raise; a test fails if any table with `tenant_id` lacks the mixin); Pinecone leakage tests (queries for tenant A never return tenant B ids) against the real service, in throwaway namespaces of the contract-test index.
 - **Red-team eval suite** (`evals/red_team/`): direct + indirect injection, jailbreak, data-exfil, tool-abuse prompts; measured as attack success rate (ASR) per category — tracked over time, never claimed as "100% secure".
 - CI: Bandit/Semgrep, gitleaks, dependency audit, Trivy.
 
@@ -608,7 +609,7 @@ Tool execution pipeline: `LLM proposal → Pydantic arg validation → permissio
 ## 11. Deployment
 
 ### 11.1 Environments
-`local` (Docker Compose, SeaweedFS for S3, Pinecone Local) → `staging` (optional, same Terraform, smaller) → `prod` (private, invite-only).
+`local` (Docker Compose, SeaweedFS for S3, real Pinecone via API key) → `staging` (optional, same Terraform, smaller) → `prod` (private, invite-only).
 
 ### 11.2 AWS topology — two profiles (Terraform variable)
 Region: **AWS us-east-1**, because Pinecone's free Starter plan only offers indexes there; keeping both together avoids cross-region latency and data-transfer cost.
@@ -634,18 +635,20 @@ The deployment is for our own use, so we restrict the network as well as the log
 - Cost guards still apply (per-user/tenant token budgets, global daily spend cap, kill switch) — they protect against bugs and runaway agent loops, not only strangers.
 
 ### 11.4 Pinecone free (Starter) plan fit
-Checked against Pinecone's published limits on 2026-11-16 (re-check before Phase 2; limits can change):
+Checked against Pinecone's published limits on 2026-11-16 and re-checked 2026-11-17 (pricing page and database-limits docs; limits can change):
 
 | Starter limit | Our expected use | Fit |
 |---------------|------------------|-----|
 | 2 GB storage per org | Thousands to low hundreds of thousands of chunks (small vectors, filter-only metadata, no chunk text) | ✅ |
 | 1M read units / month | A few small queries per chat message | ✅ |
 | 2M write units / month | Ingestion of our documents + occasional re-index | ✅ (watch during full re-index) |
-| 5 indexes per project, us-east-1 only | prod dense (+ sparse in Phase 5), staging dense (+ sparse) = 2–4 | ✅ |
+| 5 indexes per project, us-east-1 only | prod dense (+ sparse in Phase 5), staging dense (+ sparse), plus the `om-contract-test` index = 3–5 | ⚠️ tight once sparse arrives; share staging/test or upgrade |
 | 100 namespaces per index | One per tenant + eval namespaces — a few for our own use | ✅ |
-| 1 project per org | Staging and prod share one project and API key | ⚠️ accepted trade-off; separate when we upgrade |
+| 1 project per org, 2 users per org | Dev, CI, staging and prod share one project (use separate API keys within it so each can be revoked) | ⚠️ accepted trade-off; separate when we upgrade |
+| 40 KB filterable metadata per record; 1,000 records / 2 MB per upsert; 1,000 ids per delete; top_k ≤ 10,000 | Small filter-only metadata; batch upserts and deletes at ≤1,000 | ✅ |
+| 1 GB egress / month; no backups/restore on Starter | Small query responses (no values, no text); index rebuildable from MySQL | ✅ |
 | Hosted rerank: 500 requests / month | Not used — local reranker by default (D5) | ✅ |
-| Inactivity archiving (older posts mention ~7 days; current policy unclear) | Daily Celery beat keep-alive query; index rebuildable from MySQL | ⚠️ mitigated |
+| Inactivity archiving (not mentioned in current docs; older posts mention ~7 days) | Daily Celery beat keep-alive query; index rebuildable from MySQL | ⚠️ mitigated |
 
 Quota errors (`403 QUOTA_EXCEEDED`) are caught and shown as a clear "search unavailable" message, raise an alert, and never fail silently. **Upgrade triggers:** hitting quotas, needing separate keys per environment, needing hosted reranking at volume or another region, or opening Phase D.
 

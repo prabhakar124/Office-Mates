@@ -8,7 +8,8 @@ Enterprise AI knowledge and workflow assistant: grounded, permission-aware answe
 - Backend skeleton (FastAPI): app factory, typed settings, structured JSON logging, RFC 9457 error responses, request IDs, security headers, `/healthz`, `/readyz`, `/version`.
 - Frontend shell (Next.js 16, TypeScript, Tailwind, shadcn/ui): sidebar layout, light/dark theme, typed API client generated from the backend's OpenAPI schema, live system-status card. Sidebar features are shown disabled with the phase they arrive in.
 
-- Local stack with Docker Compose: MySQL 8.4, Redis, Pinecone Local, SeaweedFS (S3 stand-in), API, Celery worker and web app. The worker has one connectivity task; MySQL, Pinecone and S3 are running but not used by the app yet.
+- Local stack with Docker Compose: MySQL 8.4, Redis, SeaweedFS (S3 stand-in), API, Celery worker and web app. The worker has one connectivity task; S3 is running but not used by the app yet.
+- Pinecone contract tests: the vector-store behaviours the design relies on (namespace isolation, metadata filters, list/delete by id prefix, namespace deletion) are checked against the real Pinecone service. The app itself does not use Pinecone yet.
 - Database foundation: async SQLAlchemy on MySQL, Alembic migrations (run automatically by Docker Compose as a separate `migrator` account), restricted `app_rw` account for the app, time-ordered UUID keys and UTC timestamps. No application tables yet.
 
 ## Not yet implemented
@@ -38,7 +39,8 @@ docker compose up --build -d --wait
 | MySQL | localhost:3310 (database `officemates`) |
 | Redis | localhost:6379 |
 | S3 (SeaweedFS) | http://localhost:8333 |
-| Pinecone Local | http://localhost:5080 |
+
+Pinecone is not part of the local stack: there is no supported emulator, so it is used as the real service with `PINECONE_API_KEY` from `.env`.
 
 All ports are bound to 127.0.0.1 only. Stop with `docker compose down` (add `-v` to also delete the data).
 
@@ -61,6 +63,8 @@ uv run python -m officemates.db.migrate revision --autogenerate -m "describe the
 ```
 
 Tests marked `integration` use the `officemates_test` database in the Compose MySQL and are skipped if it is not running.
+
+Tests marked `pinecone` run against the real Pinecone service, using `PINECONE_API_KEY` from the root `.env` (or the environment). They use a small dedicated index, `om-contract-test`, created on first run, and throwaway namespaces that are deleted afterwards. Without a key they are skipped. In CI they run when the repository has a `PINECONE_API_KEY` secret.
 
 ## Local development (frontend)
 Requirements: Node 22+. Start the backend first, then:

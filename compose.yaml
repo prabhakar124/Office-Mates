@@ -49,16 +49,8 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Pinecone Local: in-memory emulator of the Pinecone API for development and tests.
-  # Data is lost on restart by design. Used by the app from Phase 2.
-  pinecone:
-    image: ghcr.io/pinecone-io/pinecone-local:latest
-    environment:
-      PORT: 5080
-      PINECONE_HOST: pinecone # host name other containers use to reach created indexes
-    ports:
-      - "127.0.0.1:5080-5090:5080-5090"
-    restart: unless-stopped
+  # Pinecone has no container here: Pinecone Local reached end of life on 2026-10-07, so
+  # development and tests use the real service with PINECONE_API_KEY (see ADR 003).
 
   # SeaweedFS: S3-compatible object storage standing in for AWS S3 locally (Phase 2 uploads).
   # "mini" runs every SeaweedFS component in one container and creates the bucket on startup.

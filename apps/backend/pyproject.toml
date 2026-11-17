@@ -24,6 +24,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "pre-commit>=4",
+    "pinecone>=7",
 ]
 
 [build-system]
@@ -76,4 +77,5 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
     "integration: needs the MySQL container from Docker Compose (database officemates_test)",
+    "pinecone: needs PINECONE_API_KEY; runs against the real Pinecone service",
 ]
