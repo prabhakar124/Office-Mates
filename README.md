@@ -90,6 +90,9 @@ uv run pre-commit install
 
 Run all checks by hand with `uv run pre-commit run --all-files` from `apps/backend`. The first run downloads and builds the secret scanner, which takes a few minutes.
 
+## Continuous integration
+`.github/workflows/ci.yml` runs on every push to `main` and on pull requests: a secret scan of the full history, backend lint/type checks/tests against a real MySQL, frontend lint/type checks/tests/build, a check that the generated API client matches the backend, and a build-and-start smoke test of the whole Docker stack. It uses no repository secrets.
+
 ## Licence
 Copyright © 2026. All rights reserved. The source is public to read; no licence is granted to use, copy or redistribute it.
 

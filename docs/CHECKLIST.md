@@ -27,7 +27,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 - [ ] Verify Pinecone Local parity (namespaces, metadata filters, list-by-prefix, delete) and re-check Pinecone Starter limits (§11.4)
 - [x] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` and UTC `DATETIME(6)` types; MySQL check in `/readyz`; migrations run as a one-shot Compose job — 49 tests incl. 10 against real MySQL
 - [x] Pre-commit: gitleaks, `.env` blocker, private-key/large-file/merge-conflict checks, Ruff, mypy, ESLint, Prettier, tsc 🔒 — verified to block a fake token and a `.env` file
-- [ ] GitHub Actions `ci.yml`: lint, type-check, tests with service containers
+- [ ] GitHub Actions `ci.yml`: secret scan (full history), backend lint/types/tests with a MySQL service, web lint/types/tests/build, API-contract check, Docker stack smoke test — *written and dry-run locally; first run on GitHub pending push*
 - [ ] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile)
 - **Exit:** `docker compose up` → web shows shell, `/readyz` green, CI green.
 

@@ -12,9 +12,16 @@ set -eu
 
 : "${MYSQL_ROOT_PASSWORD:?}" "${MYSQL_APP_PASSWORD:?}" "${MYSQL_MIGRATOR_PASSWORD:?}" "${MYSQL_READONLY_PASSWORD:?}"
 
+# Inside the MySQL container the client uses the local socket. CI runs this script from
+# the runner instead and sets MYSQL_HOST / MYSQL_PORT to reach the service container.
+set --
+if [ -n "${MYSQL_HOST:-}" ]; then
+  set -- --protocol=TCP -h "$MYSQL_HOST" -P "${MYSQL_PORT:-3306}"
+fi
+
 # The password is passed through the environment, not the command line, so it never
 # appears in the process list.
-MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot <<SQL
+MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$@" <<SQL
 CREATE DATABASE IF NOT EXISTS officemates      CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE DATABASE IF NOT EXISTS officemates_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
