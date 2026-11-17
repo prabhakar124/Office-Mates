@@ -1,6 +1,6 @@
 # Office-Mates — Development Checklist & Roadmap
 
-> Companion to [BLUEPRINT.md](BLUEPRINT.md). Status: **approved 2026-11-16 — Phase 0 in progress.**
+> Companion to [BLUEPRINT.md](BLUEPRINT.md). Status: **approved 2026-11-16 — Phase 0 complete 2026-11-17; Phase 1 next.**
 > Each phase ends with: tests green in CI, docs/ADR updated, a short demo of the working slice, and an honest "what is and isn't done" note.
 
 Legend: **[MVP]** required for the first private deployment · **[ADV]** advanced · 🔒 security-critical · 📏 must be measured with evals
@@ -30,6 +30,9 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 - [x] GitHub Actions `ci.yml`: secret scan (full history), backend lint/types/tests with a MySQL service, web lint/types/tests/build, API-contract check, Docker stack smoke test — *green on GitHub from 64320cb (first run failed on a fresh-checkout typecheck bug, fixed)*; Pinecone contract tests run when the `PINECONE_API_KEY` repo secret is set
 - [x] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile) — in [adr/](adr/README.md); 002–005 are accepted designs, built in Phases 1–4
 - **Exit:** `docker compose up` → web shows shell, `/readyz` green, CI green.
+- ✅ **Done 2026-11-17.** Demo: `docker compose up --build -d --wait` → api, worker, web, mysql, redis, s3 healthy; `/readyz` ok (mysql, redis); web shell shows "Operational". CI green on `f685026`.
+  - **Works:** the skeleton only — health endpoints, app shell, local stack, DB foundation (no app tables), pre-commit, CI, ADRs 001–005, Pinecone contract tests.
+  - **Not done / known gaps:** no product features; Pinecone and S3 are not used by the app yet and have no `/readyz` check; the web shell's sidebar features are disabled placeholders; the worker has only a ping task.
 
 ## Phase 1 — Identity, tenancy, RBAC [MVP] 🔒
 - [ ] Models: tenants, users, memberships, refresh_tokens, audit_logs
