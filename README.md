@@ -79,6 +79,17 @@ cd apps/backend && uv run python -m officemates.scripts.export_openapi ../web/li
 cd ../web && npm run gen:api
 ```
 
+## Pre-commit checks
+Run once after cloning, so every commit is checked automatically (secret scan, lint, types, formatting):
+
+```bash
+cd apps/backend
+uv sync
+uv run pre-commit install
+```
+
+Run all checks by hand with `uv run pre-commit run --all-files` from `apps/backend`. The first run downloads and builds the secret scanner, which takes a few minutes.
+
 ## Licence
 Copyright © 2026. All rights reserved. The source is public to read; no licence is granted to use, copy or redistribute it.
 

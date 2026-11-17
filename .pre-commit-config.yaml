@@ -1,0 +1,92 @@
+# Checks that run automatically before every commit. One-time setup (from apps/backend):
+#   uv sync && uv run pre-commit install
+# Run everything by hand:  uv run pre-commit run --all-files   (from apps/backend)
+#
+# The repository is public, so the secret scanner (gitleaks) is the most important hook.
+# Lint/type/format hooks use the project's own pinned tools, so local checks and CI
+# can never disagree about versions.
+
+minimum_pre_commit_version: "4.0.0"
+default_install_hook_types: [pre-commit]
+
+# Generated or vendored files that hooks should not rewrite.
+exclude: |
+  (?x)^(
+    apps/web/package-lock\.json|
+    apps/backend/uv\.lock|
+    apps/web/lib/api/(openapi\.json|schema\.d\.ts)|
+    apps/web/components/ui/.*
+  )$
+
+repos:
+  # ---------------------------------------------------------------- secrets ----
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------- hygiene ----
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: check-case-conflict # Windows/macOS vs Linux file-name clashes
+      - id: check-yaml
+      - id: check-json
+        exclude: ^apps/web/tsconfig\.json$ # tsconfig allows comments
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+
+  - repo: local
+    hooks:
+      - id: forbid-env-files
+        name: forbid committing .env files
+        entry: ".env files must never be committed (only .env.example)"
+        language: fail
+        files: (^|/)\.env(\..*)?$
+        exclude: (^|/)\.env\.example$
+
+  # ---------------------------------------------------------------- backend ----
+      - id: backend-ruff-check
+        name: backend · ruff lint
+        entry: python scripts/backend_tool.py ruff check --fix .
+        language: system
+        files: ^apps/backend/.*\.(py|toml)$
+        pass_filenames: false
+      - id: backend-ruff-format
+        name: backend · ruff format
+        entry: python scripts/backend_tool.py ruff format .
+        language: system
+        files: ^apps/backend/.*\.py$
+        pass_filenames: false
+      - id: backend-mypy
+        name: backend · mypy (strict)
+        entry: python scripts/backend_tool.py mypy
+        language: system
+        files: ^apps/backend/.*\.(py|toml)$
+        pass_filenames: false
+
+  # --------------------------------------------------------------- frontend ----
+      - id: web-eslint
+        name: web · eslint
+        entry: npm --prefix apps/web run lint
+        language: system
+        files: ^apps/web/.*\.(ts|tsx|mjs|json)$
+        pass_filenames: false
+      - id: web-prettier
+        name: web · prettier
+        entry: npm --prefix apps/web run format
+        language: system
+        files: ^apps/web/.*\.(ts|tsx|mjs|css|json|md)$
+        pass_filenames: false
+      - id: web-typecheck
+        name: web · typescript
+        entry: npm --prefix apps/web run typecheck
+        language: system
+        files: ^apps/web/.*\.(ts|tsx|json)$
+        pass_filenames: false

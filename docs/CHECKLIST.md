@@ -26,7 +26,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 - [x] Docker Compose: mysql 8.4, redis, pinecone-local (emulator), SeaweedFS (S3 stand-in; MinIO images no longer exist), api, worker (minimal Celery app + `system.ping`), web — all verified running; Redis readiness check in `/readyz`
 - [ ] Verify Pinecone Local parity (namespaces, metadata filters, list-by-prefix, delete) and re-check Pinecone Starter limits (§11.4)
 - [x] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` and UTC `DATETIME(6)` types; MySQL check in `/readyz`; migrations run as a one-shot Compose job — 49 tests incl. 10 against real MySQL
-- [ ] Pre-commit: Ruff, mypy, ESLint, Prettier, gitleaks 🔒
+- [x] Pre-commit: gitleaks, `.env` blocker, private-key/large-file/merge-conflict checks, Ruff, mypy, ESLint, Prettier, tsc 🔒 — verified to block a fake token and a `.env` file
 - [ ] GitHub Actions `ci.yml`: lint, type-check, tests with service containers
 - [ ] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile)
 - **Exit:** `docker compose up` → web shows shell, `/readyz` green, CI green.
