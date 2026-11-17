@@ -4,15 +4,18 @@
 ``app`` is the module-level instance used by uvicorn: ``uvicorn officemates.main:app``.
 """
 
+import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import structlog
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from officemates import __version__
-from officemates.api import health
+from officemates.api import auth, health
+from officemates.auth.dependencies import csrf_protect
 from officemates.core.config import Settings, get_settings
 from officemates.core.errors import register_error_handlers
 from officemates.core.health import ReadinessRegistry
@@ -55,6 +58,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine) if engine is not None else None
+    if settings.jwt_secret is not None:
+        app.state.auth_signing_key = settings.jwt_secret.get_secret_value()
+    else:  # local only (deployed settings refuse to load without a secret)
+        app.state.auth_signing_key = secrets.token_urlsafe(48)
+        structlog.get_logger(__name__).warning(
+            "auth.ephemeral_signing_key", hint="set OM_JWT_SECRET to keep sessions across restarts"
+        )
     app.state.readiness = ReadinessRegistry()
     if engine is not None:
         app.state.readiness.register("mysql", database_readiness_check(engine))
@@ -80,9 +90,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             expose_headers=["X-Request-ID"],
         )
 
-    # Platform endpoints live at the root (load balancers and probes expect that);
-    # feature routers will be mounted under API_PREFIX from Phase 1.
+    # Platform endpoints live at the root (load balancers and probes expect that).
     app.include_router(health.router)
+    # Every API route gets the CSRF check; it lets safe methods through.
+    api = [Depends(csrf_protect)]
+    app.include_router(auth.router, prefix=API_PREFIX, dependencies=api)
+    app.include_router(auth.me_router, prefix=API_PREFIX, dependencies=api)
 
     return app
 

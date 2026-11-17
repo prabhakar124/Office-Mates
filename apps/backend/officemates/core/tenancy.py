@@ -56,6 +56,17 @@ def tenant_scope(tenant_id: uuid.UUID) -> Iterator[None]:
         _scope.reset(token)
 
 
+def bind_request_tenant(tenant_id: uuid.UUID) -> None:
+    """Set the tenant for the rest of the current request, without a ``with`` block.
+
+    Only for the authentication dependency: every request runs in its own task with a
+    copied context, so the value cannot leak into another request (tested).
+    """
+    if not isinstance(tenant_id, uuid.UUID):
+        raise TypeError(f"tenant_id must be uuid.UUID, got {type(tenant_id).__name__}")
+    _scope.set(_Scope(tenant_id=tenant_id))
+
+
 @contextmanager
 def system_scope(reason: str) -> Iterator[None]:
     """Run across all tenants. ``reason`` is a short stable label and is always logged."""

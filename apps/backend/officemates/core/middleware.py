@@ -93,6 +93,9 @@ class SecurityHeadersMiddleware:
         (b"referrer-policy", b"no-referrer"),
         (b"cross-origin-resource-policy", b"same-site"),
     )
+    # The API serves JSON only, so nothing it returns may load or run anything. The local
+    # /docs page is the exception: it needs its own scripts (it is off when deployed).
+    _CSP = (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'")
 
     def __init__(self, app: ASGIApp, *, hsts: bool) -> None:
         self.app = app
@@ -107,6 +110,8 @@ class SecurityHeadersMiddleware:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
                 headers.extend(self._HEADERS)
+                if not scope.get("path", "").startswith("/docs"):
+                    headers.append(self._CSP)
                 if self.hsts:
                     headers.append(
                         (b"strict-transport-security", b"max-age=31536000; includeSubDomains")

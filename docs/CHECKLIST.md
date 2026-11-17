@@ -35,15 +35,15 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
   - **Not done / known gaps:** no product features; Pinecone and S3 are not used by the app yet and have no `/readyz` check; the web shell's sidebar features are disabled placeholders; the worker has only a ping task.
 
 ## Phase 1 — Identity, tenancy, RBAC [MVP] 🔒
-- [ ] Models: tenants, users, memberships, refresh_tokens, audit_logs — *tenants, users, memberships, audit_logs done (migration 0002, audit log append-only via triggers); refresh_tokens and invitations come with login*
+- [x] Models: tenants, users, memberships, refresh_tokens, audit_logs — migrations 0002–0003; audit log append-only via triggers *(invitations table comes with the invitation flow)*
 - [x] `TenantContext` + `TenantScopedMixin` + fail-closed ORM hooks (`do_orm_execute` criteria, `before_insert` stamping, raise without context) + audited `system_scope()` 🔒 — also catches tenant tables that are only joined/subqueried, refuses bare Core tables and bulk `tenant_id` updates; *system scope is logged, not yet written to audit_logs*
 - [ ] Composite FKs `(tenant_id, id)` on child tables; raw-SQL lint rule outside repositories 🔒 — *`tenant_foreign_key()` + a test that every tenant→tenant FK is composite (no such child tables yet); Core-table access is refused at runtime; `text()` lint rule still to do*
-- [ ] Register (dev only), login, refresh rotation with reuse detection, logout; Argon2id
-- [ ] Cookie-based JWT, CSRF protection, strict CORS, security headers (CSP, HSTS)
+- [x] Register (dev only), login, refresh rotation with reuse detection, logout; Argon2id — reuse revokes the whole session family and kills its access tokens; failures look identical for unknown email and wrong password
+- [x] Cookie-based JWT, CSRF protection, strict CORS, security headers (CSP, HSTS) — HttpOnly access/refresh cookies, double-submit CSRF on every state-changing API call, JSON-only session-start endpoints; *web app CSP comes with the frontend slice*
 - [ ] `require_permission()` dependency + role→permission map
 - [ ] Invitations: admin invites user → accept-invitation sets password; public sign-up disabled outside local
 - [ ] Login rate limiting (Redis) + lockout
-- [ ] Audit events for auth actions
+- [ ] Audit events for auth actions — *register, login, logout and refresh-token reuse are audited; failed logins are only logged (no tenant to file them under — security_events in Phase 8); invitation/role events come with slice 3*
 - [ ] Frontend: login, accept-invitation, session handling, role-aware nav, member/invite admin page
 - [ ] Tests: authz matrix, generated per-model cross-tenant tests, "every `tenant_id` table has the mixin" test, token rotation/reuse tests
 - **Exit:** two tenants cannot read, update or delete each other's rows through any repository/ORM path; un-scoped queries fail closed.

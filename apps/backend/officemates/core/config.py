@@ -3,7 +3,7 @@
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +44,26 @@ class Settings(BaseSettings):
 
     # OpenAPI docs UI is only exposed where we explicitly allow it (never in prod by default).
     docs_enabled: bool | None = None
+
+    # Auth (ADR/blueprint D10). The signing key must be set wherever the app is deployed;
+    # locally an unset key means a random one per process (sessions end on restart).
+    jwt_secret: SecretStr | None = None
+    access_token_minutes: int = Field(default=15, ge=1, le=60)
+    refresh_token_days: int = Field(default=14, ge=1, le=90)
+    # Self-service sign-up creates a tenant and its owner. Never available when deployed.
+    allow_registration: bool = True
+
+    @model_validator(mode="after")
+    def _deployed_requirements(self) -> "Settings":
+        if self.is_deployed:
+            if self.jwt_secret is None or len(self.jwt_secret.get_secret_value()) < 32:
+                raise ValueError("OM_JWT_SECRET must be set (32+ characters) when deployed")
+            self.allow_registration = False
+        return self
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.is_deployed
 
     @property
     def is_deployed(self) -> bool:

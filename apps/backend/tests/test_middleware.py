@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from officemates.core.config import Environment, Settings
 from officemates.main import create_app
@@ -36,7 +37,9 @@ def test_security_headers(client: TestClient) -> None:
 
 
 def test_hsts_and_no_docs_when_deployed() -> None:
-    settings = Settings(_env_file=None, environment=Environment.PROD)
+    settings = Settings(
+        _env_file=None, environment=Environment.PROD, jwt_secret=SecretStr("x" * 40)
+    )
     with TestClient(create_app(settings)) as c:
         assert "strict-transport-security" in c.get("/healthz").headers
         assert c.get("/docs").status_code == 404
@@ -54,3 +57,10 @@ def test_cors_allows_only_configured_origin(client: TestClient) -> None:
 
     denied = client.get("/healthz", headers={"Origin": "https://evil.example"})
     assert "access-control-allow-origin" not in denied.headers
+
+
+def test_api_responses_forbid_loading_anything(client: TestClient) -> None:
+    csp = client.get("/healthz").headers["content-security-policy"]
+    assert "default-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "content-security-policy" not in client.get("/docs").headers
