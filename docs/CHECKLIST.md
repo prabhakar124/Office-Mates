@@ -28,7 +28,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 - [x] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` and UTC `DATETIME(6)` types; MySQL check in `/readyz`; migrations run as a one-shot Compose job — 49 tests incl. 10 against real MySQL
 - [x] Pre-commit: gitleaks, `.env` blocker, private-key/large-file/merge-conflict checks, Ruff, mypy, ESLint, Prettier, tsc 🔒 — verified to block a fake token and a `.env` file
 - [ ] GitHub Actions `ci.yml`: secret scan (full history), backend lint/types/tests with a MySQL service, web lint/types/tests/build, API-contract check, Docker stack smoke test — *written and dry-run locally; first run on GitHub pending push*
-- [ ] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile)
+- [x] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile) — in [adr/](adr/README.md); 002–005 are accepted designs, built in Phases 1–4
 - **Exit:** `docker compose up` → web shows shell, `/readyz` green, CI green.
 
 ## Phase 1 — Identity, tenancy, RBAC [MVP] 🔒

@@ -2,7 +2,7 @@
 
 Enterprise AI knowledge and workflow assistant: grounded, permission-aware answers with citations over an organisation's own documents.
 
-> **Status: Phase 0 (foundations) in progress.** Only what is listed under *Implemented* below works today. See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design and [docs/CHECKLIST.md](docs/CHECKLIST.md) for progress.
+> **Status: Phase 0 (foundations) in progress.** Only what is listed under *Implemented* below works today. See [docs/BLUEPRINT.md](docs/BLUEPRINT.md) for the design, [docs/adr/](docs/adr/README.md) for the key decisions and [docs/CHECKLIST.md](docs/CHECKLIST.md) for progress.
 
 ## Implemented
 - Backend skeleton (FastAPI): app factory, typed settings, structured JSON logging, RFC 9457 error responses, request IDs, security headers, `/healthz`, `/readyz`, `/version`.
