@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     # Unset means "no Redis": the API still runs, without the Redis readiness check.
     redis_url: SecretStr | None = None
 
+    # MySQL, as mysql+asyncmy://user:password@host:port/database.
+    # database_url is the application account (app_rw: data only, no schema changes).
+    # database_migration_url is the migrator account and is given only to the migration job.
+    database_url: SecretStr | None = None
+    database_migration_url: SecretStr | None = None
+    database_pool_size: int = 5
+
     # OpenAPI docs UI is only exposed where we explicitly allow it (never in prod by default).
     docs_enabled: bool | None = None
 

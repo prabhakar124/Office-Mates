@@ -11,6 +11,10 @@ dependencies = [
     "pydantic-settings>=2.6",
     "structlog>=24.4",
     "celery[redis]>=5.4",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncmy>=0.2.10",
+    "alembic>=1.14",
+    "cryptography>=43",
 ]
 
 [dependency-groups]
@@ -69,3 +73,6 @@ disallow_untyped_decorators = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = [
+    "integration: needs the MySQL container from Docker Compose (database officemates_test)",
+]

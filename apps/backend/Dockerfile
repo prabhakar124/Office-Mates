@@ -16,8 +16,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 COPY officemates ./officemates
+# --reinstall-package: uv's cache only notices pyproject.toml changes, so without this an
+# image built after a source-only change would silently contain the previous code.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable
+    uv sync --frozen --no-dev --no-editable --reinstall-package officemates
 
 # ---------- runtime: no build tools, no uv, non-root ----------
 FROM python:3.13-slim AS runtime

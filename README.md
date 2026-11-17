@@ -9,6 +9,7 @@ Enterprise AI knowledge and workflow assistant: grounded, permission-aware answe
 - Frontend shell (Next.js 16, TypeScript, Tailwind, shadcn/ui): sidebar layout, light/dark theme, typed API client generated from the backend's OpenAPI schema, live system-status card. Sidebar features are shown disabled with the phase they arrive in.
 
 - Local stack with Docker Compose: MySQL 8.4, Redis, Pinecone Local, SeaweedFS (S3 stand-in), API, Celery worker and web app. The worker has one connectivity task; MySQL, Pinecone and S3 are running but not used by the app yet.
+- Database foundation: async SQLAlchemy on MySQL, Alembic migrations (run automatically by Docker Compose as a separate `migrator` account), restricted `app_rw` account for the app, time-ordered UUID keys and UTC timestamps. No application tables yet.
 
 ## Not yet implemented
 Everything else in the blueprint: auth, Knowledge Hub, ingestion, assistant, RAG, agents, tools, security center, evaluation, observability, deployment.
@@ -50,6 +51,16 @@ uv sync
 uv run uvicorn officemates.main:app --reload
 uv run pytest
 ```
+
+### Database migrations
+Docker Compose applies migrations on start. To work with them by hand, set `OM_DATABASE_MIGRATION_URL` (see `apps/backend/.env.example`) and run from `apps/backend`:
+
+```bash
+uv run python -m officemates.db.migrate upgrade head
+uv run python -m officemates.db.migrate revision --autogenerate -m "describe the change"
+```
+
+Tests marked `integration` use the `officemates_test` database in the Compose MySQL and are skipped if it is not running.
 
 ## Local development (frontend)
 Requirements: Node 22+. Start the backend first, then:

@@ -25,7 +25,7 @@ Legend: **[MVP]** required for the first private deployment · **[ADV]** advance
 - [x] Frontend: Next.js 16 + TS + Tailwind + shadcn/ui, app shell layout, theme, typed API client (OpenAPI-generated) + live status card — 7 Vitest tests, ESLint + tsc clean, verified in browser
 - [x] Docker Compose: mysql 8.4, redis, pinecone-local (emulator), SeaweedFS (S3 stand-in; MinIO images no longer exist), api, worker (minimal Celery app + `system.ping`), web — all verified running; Redis readiness check in `/readyz`
 - [ ] Verify Pinecone Local parity (namespaces, metadata filters, list-by-prefix, delete) and re-check Pinecone Starter limits (§11.4)
-- [ ] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` type helpers
+- [x] SQLAlchemy (asyncmy) + Alembic baseline; MySQL users (`app_rw`, `migrator`, `readonly_ops`), utf8mb4 + UUIDv7 `BINARY(16)` and UTC `DATETIME(6)` types; MySQL check in `/readyz`; migrations run as a one-shot Compose job — 49 tests incl. 10 against real MySQL
 - [ ] Pre-commit: Ruff, mypy, ESLint, Prettier, gitleaks 🔒
 - [ ] GitHub Actions `ci.yml`: lint, type-check, tests with service containers
 - [ ] ADRs 001–005 (monorepo, tenancy, vector isolation, LLM gateway, hosting profile)
